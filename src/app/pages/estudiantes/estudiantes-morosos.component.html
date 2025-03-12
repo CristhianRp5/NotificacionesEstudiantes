@@ -1,0 +1,134 @@
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title text-muted fw-normal mb-1" style="font-size: 0.85rem;">TOTAL MOROSOS</h6>
+            <h3 class="mb-0 fw-light">{{ estudiantesMorosos.length }}</h3>
+          </div>
+          <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+            <i class="bi bi-exclamation-triangle text-danger"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title text-muted fw-normal mb-1" style="font-size: 0.85rem;">DEUDA TOTAL</h6>
+            <h3 class="mb-0 fw-light">${{ deudaTotal.toFixed(2) }}</h3>
+          </div>
+          <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+            <i class="bi bi-cash-stack text-danger"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-0">
+            <i class="bi bi-search text-muted"></i>
+          </span>
+          <input
+            type="text"
+            class="form-control border-0 bg-light"
+            placeholder="Buscar estudiante moroso..."
+            [(ngModel)]="searchTerm"
+          >
+          <button class="btn btn-primary px-4">
+            <i class="bi bi-search me-2"></i>Buscar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-normal">Estudiantes Morosos</h5>
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          Acciones
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
+          <li><a class="dropdown-item py-2" href="#"><i class="bi bi-envelope me-2 text-primary"></i>Enviar notificación masiva</a></li>
+          <li><a class="dropdown-item py-2" href="#"><i class="bi bi-printer me-2 text-primary"></i>Imprimir reporte</a></li>
+          <li><a class="dropdown-item py-2" href="#"><i class="bi bi-file-earmark-excel me-2 text-success"></i>Exportar a Excel</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card-body p-4">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th class="fw-medium" style="font-size: 0.85rem;">ID</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">ESTUDIANTE</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">CURSO</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">DEUDA TOTAL</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">DÍAS DE ATRASO</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">ÚLTIMO PAGO</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">CONCEPTOS</th>
+            <th class="fw-medium" style="font-size: 0.85rem;">ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let estudiante of filteredEstudiantes">
+            <td>{{ estudiante.id }}</td>
+            <td>
+              <div>{{ estudiante.nombres }} {{ estudiante.apellidos }}</div>
+              <div class="text-muted small">{{ estudiante.email }}</div>
+            </td>
+            <td>{{ estudiante.curso }}</td>
+            <td class="text-danger fw-medium">${{ estudiante.deudaTotal.toFixed(2) }}</td>
+            <td>
+              <span class="badge rounded-pill px-3"
+                [ngClass]="{
+                  'text-bg-warning bg-opacity-10 text-warning': estudiante.diasAtraso < 30,
+                  'text-bg-danger bg-opacity-10 text-danger': estudiante.diasAtraso >= 30
+                }">
+                {{ estudiante.diasAtraso }} días
+              </span>
+            </td>
+            <td>{{ estudiante.ultimoPago }}</td>
+            <td>
+              <span *ngFor="let concepto of estudiante.conceptos" class="badge bg-light text-dark me-1 mb-1">
+                {{ concepto }}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-success rounded-pill px-3 mb-1 w-100">
+                <i class="bi bi-cash-coin me-1"></i> Registrar Pago
+              </button>
+              <button class="btn btn-sm btn-outline-primary rounded-pill px-3 w-100">
+                <i class="bi bi-envelope me-1"></i> Notificar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <div class="text-muted small">Mostrando {{ filteredEstudiantes.length }} de {{ estudiantesMorosos.length }} estudiantes morosos</div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item disabled"><a class="page-link" href="#">Anterior</a></li>
+          <li class="page-item active"><a class="page-link" href="#">1</a></li>
+          <li class="page-item"><a class="page-link" href="#">2</a></li>
+          <li class="page-item"><a class="page-link" href="#">Siguiente</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
