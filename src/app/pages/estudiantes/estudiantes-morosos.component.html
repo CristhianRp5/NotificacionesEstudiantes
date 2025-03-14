@@ -5,7 +5,7 @@
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <h6 class="card-title text-muted fw-normal mb-1" style="font-size: 0.85rem;">TOTAL MOROSOS</h6>
-            <h3 class="mb-0 fw-light">{{ estudiantesMorosos.length }}</h3>
+            <h3 class="mb-0 fw-light">{{ loading ? '...' : estudiantesMorosos.length }}</h3>
           </div>
           <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
             <i class="bi bi-exclamation-triangle text-danger"></i>
@@ -20,7 +20,7 @@
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <h6 class="card-title text-muted fw-normal mb-1" style="font-size: 0.85rem;">DEUDA TOTAL</h6>
-            <h3 class="mb-0 fw-light">${{ deudaTotal.toFixed(2) }}</h3>
+            <h3 class="mb-0 fw-light">{{ loading ? '...' : '$' + deudaTotal.toFixed(2) }}</h3>
           </div>
           <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
             <i class="bi bi-cash-stack text-danger"></i>
@@ -41,8 +41,9 @@
             class="form-control border-0 bg-light"
             placeholder="Buscar estudiante moroso..."
             [(ngModel)]="searchTerm"
+            [disabled]="loading || estudiantesMorosos.length === 0"
           >
-          <button class="btn btn-primary px-4">
+          <button class="btn btn-primary px-4" [disabled]="loading || estudiantesMorosos.length === 0">
             <i class="bi bi-search me-2"></i>Buscar
           </button>
         </div>
@@ -51,11 +52,16 @@
   </div>
 </div>
 
+<!-- Mostrar mensaje si hay error -->
+<div *ngIf="error" class="alert alert-danger">
+  {{ error }}
+</div>
+
 <div class="card border-0 shadow-sm">
   <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
     <div class="d-flex justify-content-between align-items-center">
       <h5 class="mb-0 fw-normal">Estudiantes Morosos</h5>
-      <div class="dropdown">
+      <div class="dropdown" *ngIf="!loading && estudiantesMorosos.length > 0">
         <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
           Acciones
         </button>
@@ -68,7 +74,25 @@
     </div>
   </div>
   <div class="card-body p-4">
-    <div class="table-responsive">
+    <!-- Mostrar spinner mientras carga -->
+    <div *ngIf="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="mt-2">Cargando estudiantes morosos...</p>
+    </div>
+
+    <!-- Mostrar mensaje si no hay estudiantes morosos -->
+    <div *ngIf="!loading && estudiantesMorosos.length === 0 && !error" class="text-center py-5">
+      <div class="mb-3">
+        <i class="bi bi-emoji-smile text-success" style="font-size: 3rem;"></i>
+      </div>
+      <h5 class="fw-normal">¡No hay estudiantes con pagos pendientes!</h5>
+      <p class="text-muted mb-0">Todos los estudiantes están al día con sus pagos.</p>
+    </div>
+
+    <!-- Mostrar tabla si hay datos -->
+    <div *ngIf="!loading && estudiantesMorosos.length > 0" class="table-responsive">
       <table class="table table-hover">
         <thead class="table-light">
           <tr>
@@ -119,7 +143,7 @@
       </table>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mt-4">
+    <div *ngIf="!loading && estudiantesMorosos.length > 0" class="d-flex justify-content-between align-items-center mt-4">
       <div class="text-muted small">Mostrando {{ filteredEstudiantes.length }} de {{ estudiantesMorosos.length }} estudiantes morosos</div>
       <nav>
         <ul class="pagination pagination-sm mb-0">

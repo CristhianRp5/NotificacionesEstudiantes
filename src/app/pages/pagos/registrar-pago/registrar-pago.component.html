@@ -1,1 +1,202 @@
-<p>registrar-pago works!</p>
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
+    <h5 class="mb-0 fw-normal">Registrar Nuevo Pago</h5>
+  </div>
+  <div class="card-body p-4">
+    <!-- Alertas -->
+    <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i> {{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+
+    <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+
+    <div class="alert alert-info mb-4">
+      <div class="d-flex">
+        <div class="me-3">
+          <i class="bi bi-info-circle-fill fs-4"></i>
+        </div>
+        <div>
+          <h5 class="alert-heading mb-1">Información del Pago</h5>
+          <p class="mb-0">Complete todos los datos requeridos para registrar el pago. Asegúrese de verificar la información antes de guardar.</p>
+        </div>
+      </div>
+    </div>
+
+    <form [formGroup]="searchForm" (ngSubmit)="searchStudent()" *ngIf="!selectedStudent">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <h6 class="fw-normal mb-3 text-muted">Buscar Estudiante</h6>
+        </div>
+        <div class="col-md-8">
+          <label for="documento" class="form-label">Documento del Estudiante</label>
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Número de documento" formControlName="documento" [class.is-invalid]="isFieldInvalid('documento')">
+            <button class="btn btn-primary" type="submit" [disabled]="searchForm.invalid || isLoading">
+              <i class="bi" [ngClass]="isLoading ? 'bi-arrow-clockwise' : 'bi-search'"></i>
+              {{ isLoading ? ' Buscando...' : ' Buscar' }}
+            </button>
+          </div>
+          <div class="invalid-feedback" *ngIf="isFieldInvalid('documento')">
+            El documento es requerido para buscar al estudiante.
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div *ngIf="searchError" class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      {{ searchError }}
+    </div>
+
+    <form [formGroup]="pagoForm" (ngSubmit)="onSubmit()" *ngIf="selectedStudent">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <h6 class="fw-normal mb-3 text-muted">Información del Estudiante</h6>
+          <div class="d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearSelectedStudent()">
+              <i class="bi bi-x-circle me-1"></i>Cambiar estudiante
+            </button>
+          </div>
+        </div>
+        <div class="col-md-12">
+          <div class="p-3 border rounded bg-light">
+            <div class="d-flex align-items-center">
+              <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                <i class="bi bi-person text-primary"></i>
+              </div>
+              <div>
+                <h6 class="mb-0">{{ selectedStudent.name }}</h6>
+                <p class="text-muted mb-0 small">Documento: {{ selectedStudent.document }} | Email: {{ selectedStudent.email }}</p>
+                <p class="text-muted mb-0 small">Estado: {{ getStatusText(selectedStudent.status) }} | Teléfono: {{ selectedStudent.phone || 'No registrado' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4" *ngIf="selectedStudent.paymentsPending && selectedStudent.paymentsPending.length > 0">
+        <div class="col-md-12">
+          <h6 class="fw-normal mb-3 text-muted">Pagos Pendientes</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" style="width: 40px;">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [checked]="allPaymentsSelected" (change)="toggleAllPayments()">
+                    </div>
+                  </th>
+                  <th scope="col">Concepto</th>
+                  <th scope="col">Monto</th>
+                  <th scope="col">Fecha Vencimiento</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let payment of selectedStudent.paymentsPending; let i = index">
+                  <td>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [checked]="isPaymentSelected(payment)" (change)="togglePayment(payment)">
+                    </div>
+                  </td>
+                  <td>{{ payment.description }}</td>
+                  <td>${{ payment.amount }}</td>
+                  <td>{{ payment.dueDate | date:'dd/MM/yyyy' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning" *ngIf="selectedStudent.paymentsPending && selectedStudent.paymentsPending.length === 0">
+        <i class="bi bi-info-circle me-2"></i>
+        El estudiante no tiene pagos pendientes registrados.
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-12">
+          <h6 class="fw-normal mb-3 text-muted">Detalles del Pago</h6>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label for="concepto" class="form-label">Concepto</label>
+            <select class="form-select" formControlName="concepto" [class.is-invalid]="isFieldInvalid('concepto')">
+              <option value="">Seleccione un concepto</option>
+              <option value="matricula">Matrícula</option>
+              <option value="mensualidad">Mensualidad</option>
+              <option value="laboratorio">Laboratorio</option>
+              <option value="materiales">Materiales</option>
+              <option value="transporte">Transporte</option>
+              <option value="otro">Otro</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('concepto')">
+              Por favor seleccione un concepto para el pago.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="monto" class="form-label">Monto</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" formControlName="monto" [class.is-invalid]="isFieldInvalid('monto')">
+            </div>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('monto')">
+              El monto debe ser mayor a 0.
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label for="metodo" class="form-label">Método de Pago</label>
+            <select class="form-select" formControlName="metodo" [class.is-invalid]="isFieldInvalid('metodo')">
+              <option value="">Seleccione un método</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+              <option value="transferencia">Transferencia Bancaria</option>
+              <option value="cheque">Cheque</option>
+              <option value="app">Aplicación Móvil</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('metodo')">
+              Por favor seleccione un método de pago.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="fechaPago" class="form-label">Fecha de Pago</label>
+            <input type="date" class="form-control" formControlName="fechaPago" [class.is-invalid]="isFieldInvalid('fechaPago')">
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('fechaPago')">
+              La fecha de pago es requerida.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="referencia" class="form-label">Referencia o Número de Comprobante</label>
+        <input type="text" class="form-control" formControlName="referencia">
+      </div>
+
+      <div class="mb-3">
+        <label for="observaciones" class="form-label">Observaciones</label>
+        <textarea class="form-control" rows="3" formControlName="observaciones"></textarea>
+      </div>
+
+      <div class="form-check mb-4">
+        <input class="form-check-input" type="checkbox" id="enviarComprobante" formControlName="enviarComprobante">
+        <label class="form-check-label" for="enviarComprobante">
+          Enviar comprobante por correo electrónico
+        </label>
+      </div>
+
+      <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-outline-secondary me-2" (click)="clearSelectedStudent()">Cancelar</button>
+        <button type="submit" class="btn btn-success px-4" [disabled]="pagoForm.invalid || isProcessing">
+          <i class="bi" [ngClass]="isProcessing ? 'bi-arrow-clockwise' : 'bi-check-circle'"></i>
+          {{ isProcessing ? ' Procesando...' : ' Registrar Pago' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

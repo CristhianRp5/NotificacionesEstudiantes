@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { StudentService, Student, StudentResponse } from '../../services/student.service';
 
 interface EstudianteMoroso {
-  id: number;
+  id: string;
   nombres: string;
   apellidos: string;
   documento: string;
@@ -23,63 +24,104 @@ interface EstudianteMoroso {
   templateUrl: './estudiantes-morosos.component.html',
   styles: []
 })
-export class EstudiantesMorososComponent {
+export class EstudiantesMorososComponent implements OnInit {
   searchTerm: string = '';
+  estudiantesMorosos: EstudianteMoroso[] = [];
+  loading: boolean = true;
+  error: string | null = null;
 
-  estudiantesMorosos: EstudianteMoroso[] = [
-    {
-      id: 1,
-      nombres: 'Carlos',
-      apellidos: 'Rodríguez',
-      documento: '34567890',
-      curso: 'Tercero',
-      email: 'carlos@example.com',
-      telefono: '345-678-9012',
-      deudaTotal: 450.00,
-      diasAtraso: 45,
-      ultimoPago: '15/01/2024',
-      conceptos: ['Mensualidad', 'Laboratorio']
-    },
-    {
-      id: 2,
-      nombres: 'Ana',
-      apellidos: 'Gómez',
-      documento: '45678901',
-      curso: 'Primero',
-      email: 'ana@example.com',
-      telefono: '456-789-0123',
-      deudaTotal: 250.00,
-      diasAtraso: 20,
-      ultimoPago: '05/02/2024',
-      conceptos: ['Mensualidad']
-    },
-    {
-      id: 3,
-      nombres: 'Miguel',
-      apellidos: 'López',
-      documento: '56789012',
-      curso: 'Segundo',
-      email: 'miguel@example.com',
-      telefono: '567-890-1234',
-      deudaTotal: 600.00,
-      diasAtraso: 60,
-      ultimoPago: '10/01/2024',
-      conceptos: ['Mensualidad', 'Material Didáctico', 'Actividades Extracurriculares']
-    },
-    {
-      id: 4,
-      nombres: 'Elena',
-      apellidos: 'Díaz',
-      documento: '67890123',
-      curso: 'Tercero',
-      email: 'elena@example.com',
-      telefono: '678-901-2345',
-      deudaTotal: 300.00,
-      diasAtraso: 25,
-      ultimoPago: '28/01/2024',
-      conceptos: ['Mensualidad', 'Uniformes']
-    }
-  ];
+  constructor(private studentService: StudentService) {}
+
+  ngOnInit(): void {
+    this.loadStudents();
+  }
+
+  loadStudents(): void {
+    this.loading = true;
+    this.error = null;
+
+    this.studentService.getStudents().subscribe({
+      next: (response: StudentResponse) => {
+        console.log('Respuesta de getStudents en estudiantes-morosos:', response);
+
+        if (response && response.ok && response.students) {
+          // Filtrar y mapear estudiantes con pagos pendientes
+          const estudiantesConPagos = response.students.filter(student =>
+            student.paymentsPending && student.paymentsPending.length > 0
+          );
+
+          if (estudiantesConPagos.length > 0) {
+            this.estudiantesMorosos = this.mapMorososFromBackend(estudiantesConPagos);
+            console.log('Estudiantes morosos mapeados:', this.estudiantesMorosos);
+          } else {
+            console.warn('No se encontraron estudiantes con pagos pendientes');
+            this.estudiantesMorosos = [];
+          }
+        } else {
+          console.warn('No se encontraron estudiantes o la respuesta no es válida');
+          this.estudiantesMorosos = [];
+
+          if (!response.ok) {
+            this.error = response.message || 'Error al cargar los estudiantes';
+          }
+        }
+
+        this.loading = false;
+      },
+      error: (err: Error) => {
+        console.error('Error cargando estudiantes morosos:', err);
+        this.error = 'Error al cargar los estudiantes: ' + err.message;
+        this.loading = false;
+      }
+    });
+  }
+
+  mapMorososFromBackend(backendStudents: Student[]): EstudianteMoroso[] {
+    console.log('Mapeando estudiantes morosos del backend:', backendStudents);
+
+    return backendStudents.map(student => {
+      // Dividir el nombre en nombre y apellido (asumiendo formato "Nombre Apellido")
+      const fullNameParts = student.name.split(' ');
+      const firstName = fullNameParts[0] || '';
+      const lastName = fullNameParts.slice(1).join(' ') || '';
+
+      // Calcular deuda total sumando los montos de pagos pendientes
+      let deudaTotal = 0;
+      const conceptos: string[] = [];
+
+      student.paymentsPending.forEach(pago => {
+        if (pago.amount) {
+          deudaTotal += pago.amount;
+        }
+        if (pago.description) {
+          conceptos.push(pago.description);
+        } else if (pago.type) {
+          conceptos.push(pago.type === 'payment' ? 'Pago Pendiente' : 'Documento Pendiente');
+        }
+      });
+
+      // Generar fecha de último pago (dato simulado)
+      const hoy = new Date();
+      const diasAtraso = Math.floor(Math.random() * 60) + 5; // Entre 5 y 65 días
+      const fechaUltimoPago = new Date(hoy);
+      fechaUltimoPago.setDate(hoy.getDate() - diasAtraso);
+
+      // Crear objeto estudiante moroso
+      return {
+        id: student._id || '0',
+        nombres: firstName,
+        apellidos: lastName,
+        documento: student._id?.substring(0, 8) || '00000000', // Usamos parte del ID como documento
+        curso: 'No especificado',
+        email: student.email,
+        telefono: student.phone || 'No disponible',
+        deudaTotal: deudaTotal || 150, // Si no hay monto, asignar un valor por defecto
+        diasAtraso: diasAtraso,
+        ultimoPago: fechaUltimoPago.toLocaleDateString('es-ES'),
+        conceptos: conceptos.length > 0 ? conceptos : ['Pendiente de pago']
+      };
+    });
+  }
 
   get deudaTotal(): number {
     return this.estudiantesMorosos.reduce((total, est) => total + est.deudaTotal, 0);
@@ -89,7 +131,8 @@ export class EstudiantesMorososComponent {
     return this.estudiantesMorosos.filter(estudiante =>
       estudiante.nombres.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
       estudiante.apellidos.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-      estudiante.documento.includes(this.searchTerm)
+      estudiante.email.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+      (estudiante.documento && estudiante.documento.includes(this.searchTerm))
     );
   }
 }
